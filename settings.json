@@ -1,0 +1,9 @@
+{
+  "sync_folder": "sync_repos",
+  "repos": [
+    {
+      "from": "https://github.com/agorinenko/sync-git-repos.git",
+      "to": "https://github.com/agorinenko/sync-git-repos_mirror.git"
+    }
+  ]
+}

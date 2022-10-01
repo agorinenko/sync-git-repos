@@ -1,11 +1,13 @@
 # Byte-compiled / optimized / DLL files
+sync_repos/
+.idea
 __pycache__/
 *.py[cod]
 *$py.class
-
+results
+logs
 # C extensions
 *.so
-
 # Distribution / packaging
 .Python
 build/
