@@ -46,8 +46,6 @@ def sync_git_repo(logger, base_dir: str, from_path: str, to_path: str, branch_na
     :param to_path: to path
     :return: status and message
     """
-    total_status = -1
-    total_message = 'An unexpected error has occurred'
 
     target_dest = get_repo_folder_name(from_path)
     target_dest = Path(base_dir) / target_dest
