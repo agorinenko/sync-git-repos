@@ -1,10 +1,11 @@
 import json
 import os
 import shlex
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Tuple, Optional, Union
+from typing import Dict, Tuple, Optional, Union
 
 
 @dataclass
@@ -17,20 +18,19 @@ class SyncSetting:
     # to repo url
     to_repo_url: str
     # Key and local repo  dir
-    key: Optional[str]
+    key: str
+    # Delete local repo dir if True
+    delete_after_sync: Optional[bool] = False
 
 
+def prepare_repo_url(repo_url: str):
+    envs = ['GITHUB_TOKEN']
+    for env in envs:
+        env_val = os.environ.get(env)
+        if env_val:
+            repo_url = repo_url.replace(f'${env}', env_val)
 
-
-# def get_repo_folder_name(repo_url: str) -> str:
-#     repo_folder_name = os.path.basename(os.path.normpath(repo_url))
-#     replace_str = [('.git', ''), ('.', '_'), ('-', '_')]
-#
-#     for items in replace_str:
-#         repo_folder_name = repo_folder_name.replace(*items)
-#
-#     return repo_folder_name
-
+    return repo_url
 
 def create_folder_if_not_exist(folder_path: Union[str, os.PathLike]) -> Tuple[int, str]:
     if os.path.exists(folder_path):
@@ -70,41 +70,61 @@ def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
     :return: status and message
     """
     logger.info(f'Syncing from "{sync_setting.from_repo_url}" to "{sync_setting.to_repo_url}"...')
+    target_dest = Path(base_dir) / sync_setting.key
     try:
-        target_dest = Path(base_dir) / sync_setting.key
-
-        status, message = create_folder_if_not_exist(target_dest)
-        if status > 0:
-            logger.info(message)
+        create_folder_status, create_folder_message = create_folder_if_not_exist(target_dest)
+        if create_folder_status > 0:
+            logger.info(create_folder_message)
         else:
-            logger.error(message)
+            logger.error(create_folder_message)
 
-        output = clone_repo(sync_setting.from_repo_url, target_dest)
-        if output:
-            logger.info(output)
+        # Folder created
+        if create_folder_status == 1:
+            output = clone_repo(sync_setting.from_repo_url, target_dest)
+            if output:
+                logger.info(output)
+        else:
+            output = fetch(str(target_dest))
+            if output:
+                logger.info(output)
 
-        output = push_to_mirror(sync_setting.to_repo_url)
+            output = pull()
+            if output:
+                logger.info(output)
+
+        output = push_to_mirror(sync_setting.to_repo_url, str(target_dest))
         if output:
             logger.info(output)
 
         logger.info(f'Success syncing to {sync_setting.to_repo_url}!')
     except Exception as repo_ex:
         logger.error(repo_ex)
+    finally:
+        if sync_setting.delete_after_sync:
+            shutil.rmtree(target_dest, ignore_errors=True)
 
 
-def push_to_mirror(mirror_url: str) -> str:
-    return sh(['git', 'push', '--mirror', mirror_url])
+def fetch(dest: str) -> str:
+    return sh(['git', 'fetch', 'origin'], cwd=dest)
+
+
+def pull() -> str:
+    return sh(['git', 'pull', '--ff-only'])
+
+
+def push_to_mirror(mirror_url: str, dest: str) -> str:
+    return sh(['git', 'push', '--mirror', mirror_url], cwd=dest)
 
 
 def clone_repo(repo_url: str, dest: Union[os.PathLike, str]) -> str:
-    if not repo_is_cloned(dest):
+    if not repo_exists(dest):
         return sh(['git', 'clone', '--no-checkout', '--bare', repo_url, str(dest)])
 
     return f'Repo "{repo_url}" already clone.'
 
 
 def get_repo_info(dest: Union[os.PathLike, str]) -> dict:
-    if not repo_is_cloned(dest):
+    if not repo_exists(dest):
         raise ValueError(f'No repo found at {dest}')
 
     current_remote = sh(shlex.split('git config --get remote.origin.url'), cwd=dest)
@@ -113,5 +133,5 @@ def get_repo_info(dest: Union[os.PathLike, str]) -> dict:
     return {'current_remote': current_remote, 'current_branch': current_branch}
 
 
-def repo_is_cloned(dest: Union[os.PathLike, str]):
+def repo_exists(dest: Union[os.PathLike, str]):
     return os.path.exists(os.path.join(dest, 'HEAD'))

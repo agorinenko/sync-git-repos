@@ -1,0 +1,15 @@
+version: '3.1'
+
+services:
+  sync_git_repos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - SETTINGS=/opt/app/settings.json
+      - SLEEP_TIMEOUT=5
+      - EMAIL=mail@gmail.com
+      - USER_NAME=user
+    command: ["sync"]
