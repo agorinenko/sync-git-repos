@@ -1,14 +1,15 @@
 import argparse
 import logging
 import sys
-from typing import Optional, Any
+from typing import Optional, Any, List, Dict
 
 from sync_git_repos import utils
 
 parser = argparse.ArgumentParser()
 
 group = parser.add_argument_group('Main settings')
-group.add_argument('--settings', type=str, default='settings.json', help='Path to settings file')
+group.add_argument('--settings', required=False, type=str, default='settings.json', help='Path to settings file')
+group.add_argument('--repo', required=False, type=str, default=None, help='Repo key for sync')
 
 
 def _get_settings(settings: dict, name: str) -> Optional[Any]:
@@ -17,6 +18,17 @@ def _get_settings(settings: dict, name: str) -> Optional[Any]:
         raise Exception(f'Setting "{name}" is none or empty. Check "settings.json".')
 
     return value
+
+
+def _load_repos(settings: dict) -> Dict[str, utils.SyncSetting]:
+    repos = _get_settings(settings, 'repos')
+    result = {}
+    for key, repo in repos.items():
+        result[key] = utils.SyncSetting(key=key,
+                                        from_repo_url=_get_settings(repo, 'from_repo_url'),
+                                        to_repo_url=_get_settings(repo, 'to_repo_url'))
+
+    return result
 
 
 def main(logger, args):
@@ -29,21 +41,16 @@ def main(logger, args):
     else:
         logger.error(message)
 
-    repos = _get_settings(settings, 'repos')
+    repos = _load_repos(settings)
 
-    for repo in repos:
-        try:
-            from_path = _get_settings(repo, 'from')
-            to_path = _get_settings(repo, 'to')
-
-            logger.info(f'Syncing from "{from_path}" to "{to_path}"...')
-            status, message = utils.sync_git_repo(logger, sync_folder, from_path, to_path)
-            if status > 0:
-                logger.info(message)
-            else:
-                logger.error(message)
-        except Exception as repo_ex:
-            logging.error(repo_ex)
+    if args.repo:
+        repo = repos.get(args.repo)
+        if not repo:
+            raise Exception(f'Repo "{args.repo}" not found. Check "settings.json".')
+        utils.sync_git_repo(logger, sync_folder, repo)
+    else:
+        for repo in repos.values():
+            utils.sync_git_repo(logger, sync_folder, repo)
 
 
 if __name__ == '__main__':

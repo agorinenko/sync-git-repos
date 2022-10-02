@@ -2,8 +2,34 @@ import json
 import os
 import shlex
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Tuple, Optional, Union
+
+
+@dataclass
+class SyncSetting:
+    """
+    Settings
+    """
+    # from repo url
+    from_repo_url: str
+    # to repo url
+    to_repo_url: str
+    # Key and local repo  dir
+    key: Optional[str]
+
+
+
+
+# def get_repo_folder_name(repo_url: str) -> str:
+#     repo_folder_name = os.path.basename(os.path.normpath(repo_url))
+#     replace_str = [('.git', ''), ('.', '_'), ('-', '_')]
+#
+#     for items in replace_str:
+#         repo_folder_name = repo_folder_name.replace(*items)
+#
+#     return repo_folder_name
 
 
 def create_folder_if_not_exist(folder_path: Union[str, os.PathLike]) -> Tuple[int, str]:
@@ -35,61 +61,44 @@ def sh(*args, **kwargs) -> str:
     return subprocess.check_output(*args, **kwargs).decode().strip()
 
 
-def sync_git_repo(logger, base_dir: str, from_path: str, to_path: str, branch_name: Optional[str] = 'main') -> Tuple[
-    int, str]:
+def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
     """
     Sync one git repo
-    :param branch_name: branch name
     :param logger: logger for printing
     :param base_dir: base dir
-    :param from_path: from path
-    :param to_path: to path
+    :param sync_setting: sync setting
     :return: status and message
     """
+    logger.info(f'Syncing from "{sync_setting.from_repo_url}" to "{sync_setting.to_repo_url}"...')
+    try:
+        target_dest = Path(base_dir) / sync_setting.key
 
-    target_dest = get_repo_folder_name(from_path)
-    target_dest = Path(base_dir) / target_dest
-    status, message = create_folder_if_not_exist(target_dest)
-    if status > 0:
-        logger.info(message)
-    else:
-        logger.error(message)
+        status, message = create_folder_if_not_exist(target_dest)
+        if status > 0:
+            logger.info(message)
+        else:
+            logger.error(message)
 
-    output = clone_repo('main', from_path, target_dest)
-    if output:
-        logger.info(output)
+        output = clone_repo(sync_setting.from_repo_url, target_dest)
+        if output:
+            logger.info(output)
 
-    info = get_repo_info(target_dest)
-    remote_repo, branch = info['current_remote'], info['current_branch']
-    assert remote_repo == from_path
-    assert branch == branch_name
+        output = push_to_mirror(sync_setting.to_repo_url)
+        if output:
+            logger.info(output)
 
-    output = push_to_mirror(to_path)
-    if output:
-        logger.info(output)
-
-    # 'Success syncing!'
-    return 1, f'Success syncing to {to_path}!'
+        logger.info(f'Success syncing to {sync_setting.to_repo_url}!')
+    except Exception as repo_ex:
+        logger.error(repo_ex)
 
 
 def push_to_mirror(mirror_url: str) -> str:
-    #     git push --mirror ssh://git@git.service.t1-cloud.ru:7999/clportal/python/tags_service.git
     return sh(['git', 'push', '--mirror', mirror_url])
 
 
-def get_repo_folder_name(repo_url: str) -> str:
-    repo_folder_name = os.path.basename(os.path.normpath(repo_url))
-    replace_str = [('.git', ''), ('.', '_'), ('-', '_')]
-
-    for items in replace_str:
-        repo_folder_name = repo_folder_name.replace(*items)
-
-    return repo_folder_name
-
-
-def clone_repo(branch: str, repo_url: str, dest: Union[os.PathLike, str]) -> str:
+def clone_repo(repo_url: str, dest: Union[os.PathLike, str]) -> str:
     if not repo_is_cloned(dest):
-        return sh(['git', 'clone', '--no-checkout', '--bare', '--branch', branch, repo_url, str(dest)])
+        return sh(['git', 'clone', '--no-checkout', '--bare', repo_url, str(dest)])
 
     return f'Repo "{repo_url}" already clone.'
 
