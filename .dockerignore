@@ -1,5 +1,10 @@
 sync_git_repos.egg-info
 sync_repos
+sync_git_repos
+.env
+.env.example
+LICENSE
+setup.py
 .git*
 Dockerfile*
 docker-compose*
