@@ -1,5 +1,24 @@
 # Command for syncing git repos
 
+**Install**
+
+```shell
+pip install sync-git-repos
+```
+
+If you see
+
+```shell
+client_loop: send disconnect: Broken pipe
+send-pack: unexpected disconnect while reading sideband packet
+fatal: the remote end hung up unexpectedly
+```
+
+```shell
+git config --global http.postBuffer 524288000
+git config --global ssh.postBuffer 524288000
+```
+
 **Usage:**
 
 ```shell
