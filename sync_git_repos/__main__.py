@@ -28,7 +28,11 @@ def _load_repos(settings: dict) -> Dict[str, utils.SyncSetting]:
     repos = _get_settings(settings, 'repos')
     result = {}
     for key, repo in repos.items():
+        branches = repo.get('branches')
+        if branches is not None:
+            branches = tuple(branches)
         result[key] = utils.SyncSetting(key=key,
+                                        branches=branches,
                                         delete_after_sync=repo.get('delete_after_sync', False),
                                         from_repo_url=utils.prepare_repo_url(_get_settings(repo, 'from_repo_url')),
                                         to_repo_url=utils.prepare_repo_url(_get_settings(repo, 'to_repo_url')))

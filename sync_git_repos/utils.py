@@ -10,9 +10,7 @@ from typing import Dict, Tuple, Optional, Union
 
 @dataclass
 class SyncSetting:
-    """
-    Settings
-    """
+    """ Settings """
     # from repo url
     from_repo_url: str
     # to repo url
@@ -21,6 +19,8 @@ class SyncSetting:
     key: str
     # Delete local repo dir if True
     delete_after_sync: Optional[bool] = False
+    # list of branches for syncing
+    branches: Optional[Tuple] = None
 
 
 def prepare_repo_url(repo_url: str):
@@ -31,6 +31,7 @@ def prepare_repo_url(repo_url: str):
             repo_url = repo_url.replace(f'${env}', env_val)
 
     return repo_url
+
 
 def create_folder_if_not_exist(folder_path: Union[str, os.PathLike]) -> Tuple[int, str]:
     if os.path.exists(folder_path):
@@ -91,10 +92,15 @@ def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
             output = pull()
             if output:
                 logger.info(output)
-
-        output = push_to_mirror(sync_setting.to_repo_url, str(target_dest))
-        if output:
-            logger.info(output)
+        if sync_setting.branches:
+            for branch in sync_setting.branches:
+                output = push_to_mirror(sync_setting.to_repo_url, str(target_dest), branch)
+                if output:
+                    logger.info(output)
+        else:
+            output = push_to_mirror(sync_setting.to_repo_url, str(target_dest))
+            if output:
+                logger.info(output)
 
         logger.info(f'Success syncing to {sync_setting.to_repo_url}!')
     except Exception as repo_ex:
@@ -112,7 +118,10 @@ def pull() -> str:
     return sh(['git', 'pull', '--ff-only'])
 
 
-def push_to_mirror(mirror_url: str, dest: str) -> str:
+def push_to_mirror(mirror_url: str, dest: str, branch: Optional[str] = None) -> str:
+    if branch:
+        return sh(['git', 'push', mirror_url, branch], cwd=dest)
+
     return sh(['git', 'push', '--mirror', mirror_url], cwd=dest)
 
 
