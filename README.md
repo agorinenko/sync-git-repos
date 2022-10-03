@@ -82,3 +82,5 @@ EMAIL=user email for clone
 USER_NAME=user for clone
 
 GITHUB_TOKEN=github token, https://github.com/settings/tokens
+
+main branch
