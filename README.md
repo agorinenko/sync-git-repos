@@ -51,6 +51,10 @@ docker-compose up -d --build
   "sync_folder": "sync_repos",
   "repos": {
     "sync_git_repos": {
+      "branches": [
+        "test1"
+      ],
+      "force_push": true,
       "from_repo_url": "https://$GITHUB_TOKEN:x-oauth-basic@github.com/agorinenko/sync-git-repos.git",
       "to_repo_url": "https://$GITHUB_TOKEN:x-oauth-basic@github.com/agorinenko/sync-git-repos_mirror.git",
       "delete_after_sync": true
@@ -65,11 +69,15 @@ docker-compose up -d --build
 
 `sync_git_repos` - key and local repo dir
 
+`branches` - list of branches for syncing(push with branch), if is not set execute push with '--mirror' flag
+
+`force_push` - force push if true. Execute push with '--force' flag
+
 `from_repo_url` - from repo url
 
 `to_repo_url` - to repo url
 
-`delete_after_sync` - delete local repo dir if True
+`delete_after_sync` - delete local repo dir if true
 
 **Env variables**
 

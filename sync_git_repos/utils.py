@@ -19,7 +19,9 @@ class SyncSetting:
     key: str
     # Delete local repo dir if True
     delete_after_sync: Optional[bool] = False
-    # list of branches for syncing
+    # Force push if True. Execute push with '--force' flag
+    force_push: Optional[bool] = False
+    # List of branches for syncing(push with branch), if is not set execute push with '--mirror' flag
     branches: Optional[Tuple] = None
 
 
@@ -94,11 +96,11 @@ def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
                 logger.info(output)
         if sync_setting.branches:
             for branch in sync_setting.branches:
-                output = push_to_mirror(sync_setting.to_repo_url, str(target_dest), branch)
+                output = push(sync_setting.to_repo_url, str(target_dest), branch, force=sync_setting.force_push)
                 if output:
                     logger.info(output)
         else:
-            output = push_to_mirror(sync_setting.to_repo_url, str(target_dest))
+            output = push(sync_setting.to_repo_url, str(target_dest), mirror=True)
             if output:
                 logger.info(output)
 
@@ -118,11 +120,19 @@ def pull() -> str:
     return sh(['git', 'pull', '--ff-only'])
 
 
-def push_to_mirror(mirror_url: str, dest: str, branch: Optional[str] = None) -> str:
+def push(repo_url: str, dest: str, branch: Optional[str] = None, force: Optional[bool] = False,
+         mirror: Optional[bool] = False) -> str:
+    main_args = ['git', 'push', repo_url]
     if branch:
-        return sh(['git', 'push', mirror_url, branch], cwd=dest)
+        main_args.append(branch)
 
-    return sh(['git', 'push', '--mirror', mirror_url], cwd=dest)
+    if force:
+        main_args.append('--force')
+
+    if mirror:
+        main_args.append('--mirror')
+
+    return sh(main_args, cwd=dest)
 
 
 def clone_repo(repo_url: str, dest: Union[os.PathLike, str]) -> str:
