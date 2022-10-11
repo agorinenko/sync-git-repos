@@ -10,7 +10,7 @@ python -m twine upload dist/*
 """
 setuptools.setup(
     name="sync-git-repos",
-    version="0.0.3",
+    version="0.0.4",
     author="Anton Gorinenko",
     author_email="anton.gorinenko@gmail.com",
     description="Command for syncing git repos",
