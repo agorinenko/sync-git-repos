@@ -34,6 +34,7 @@ def _load_repos(settings: dict) -> Dict[str, utils.SyncSetting]:
         result[key] = utils.SyncSetting(key=key,
                                         branches=branches,
                                         force_push=repo.get('force_push', False),
+                                        check_base_name=repo.get('check_base_name', True),
                                         delete_after_sync=repo.get('delete_after_sync', False),
                                         from_repo_url=utils.prepare_repo_url(_get_settings(repo, 'from_repo_url')),
                                         to_repo_url=utils.prepare_repo_url(_get_settings(repo, 'to_repo_url')))

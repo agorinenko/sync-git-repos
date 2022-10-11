@@ -5,6 +5,7 @@
       "branches": [
         "test1"
       ],
+      "check_base_name": false,
       "force_push": true,
       "from_repo_url": "https://$GITHUB_TOKEN:x-oauth-basic@github.com/agorinenko/sync-git-repos.git",
       "to_repo_url": "https://$GITHUB_TOKEN:x-oauth-basic@github.com/agorinenko/sync-git-repos_mirror.git",

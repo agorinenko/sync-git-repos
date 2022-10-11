@@ -23,6 +23,7 @@ class SyncSetting:
     force_push: Optional[bool] = False
     # List of branches for syncing(push with branch), if is not set execute push with '--mirror' flag
     branches: Optional[Tuple] = None
+    check_base_name: Optional[bool] = True
 
 
 def prepare_repo_url(repo_url: str):
@@ -73,6 +74,11 @@ def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
     :return: status and message
     """
     logger.info(f'Syncing from "{sync_setting.from_repo_url}" to "{sync_setting.to_repo_url}"...')
+    from_base_name = os.path.basename(os.path.normpath(sync_setting.from_repo_url))
+    to_base_name = os.path.basename(os.path.normpath(sync_setting.to_repo_url))
+    if sync_setting.check_base_name and from_base_name != to_base_name:
+        raise Exception(f'{from_base_name} != {to_base_name}')
+
     target_dest = Path(base_dir) / sync_setting.key
     try:
         create_folder_status, create_folder_message = create_folder_if_not_exist(target_dest)
