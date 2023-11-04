@@ -9,6 +9,13 @@ from typing import Dict, Tuple, Optional, Union
 
 
 @dataclass
+class Hooks:
+    name: str
+    args: Optional[list] = None
+    kwargs: Optional[dict] = None
+
+
+@dataclass
 class SyncSetting:
     """ Settings """
     # from repo url
@@ -24,6 +31,23 @@ class SyncSetting:
     # List of branches for syncing(push with branch), if is not set execute push with '--mirror' flag
     branches: Optional[Tuple] = None
     check_base_name: Optional[bool] = True
+    # For example
+    # {
+    #     "after": ["sleep"],
+    #     "before": [{
+    #         "name": "wait_input",
+    #         "args": [],
+    #         "kwargs": {"message": "Press any key to continuous"}
+    #     }]
+    # }
+    hooks: Optional[dict] = None
+
+    def execute_hooks(self, key: str):
+        if self.hooks:
+            hooks = self.hooks.get(key)
+            if hooks:
+                for hook in hooks:
+                    hook()
 
 
 def prepare_repo_url(repo_url: str):
@@ -81,6 +105,8 @@ def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
 
     target_dest = Path(base_dir) / sync_setting.key
     try:
+        sync_setting.execute_hooks('before')
+
         create_folder_status, create_folder_message = create_folder_if_not_exist(target_dest)
         if create_folder_status > 0:
             logger.info(create_folder_message)
@@ -92,6 +118,8 @@ def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
             output = clone_repo(sync_setting.from_repo_url, target_dest)
             if output:
                 logger.info(output)
+
+            sync_setting.execute_hooks('after_clone')
         else:
             output = fetch(str(target_dest))
             if output:
@@ -100,6 +128,11 @@ def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
             output = pull()
             if output:
                 logger.info(output)
+
+            sync_setting.execute_hooks('after_pull')
+
+        sync_setting.execute_hooks('before_push')
+
         if sync_setting.branches:
             for branch in sync_setting.branches:
                 output = push(sync_setting.to_repo_url, str(target_dest), branch, force=sync_setting.force_push)
@@ -113,9 +146,12 @@ def sync_git_repo(logger, base_dir: str, sync_setting: SyncSetting) -> None:
         logger.info(f'Success syncing to {sync_setting.to_repo_url}!')
     except Exception as repo_ex:
         logger.error(repo_ex)
+        sync_setting.execute_hooks('on_sync_error')
     finally:
         if sync_setting.delete_after_sync:
             shutil.rmtree(target_dest, ignore_errors=True)
+
+        sync_setting.execute_hooks('after')
 
 
 def fetch(dest: str) -> str:

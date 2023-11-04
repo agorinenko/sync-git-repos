@@ -2,9 +2,9 @@ import argparse
 import logging
 import sys
 import time
-from typing import Optional, Any, Dict, Callable
+from typing import Optional, Any, Dict, Callable, Union, List
 
-from sync_git_repos import utils
+from sync_git_repos import utils, hooks
 
 parser = argparse.ArgumentParser()
 
@@ -31,14 +31,39 @@ def _load_repos(settings: dict) -> Dict[str, utils.SyncSetting]:
         branches = repo.get('branches')
         if branches is not None:
             branches = tuple(branches)
+
         result[key] = utils.SyncSetting(key=key,
                                         branches=branches,
                                         force_push=repo.get('force_push', False),
                                         check_base_name=repo.get('check_base_name', True),
                                         delete_after_sync=repo.get('delete_after_sync', False),
                                         from_repo_url=utils.prepare_repo_url(_get_settings(repo, 'from_repo_url')),
-                                        to_repo_url=utils.prepare_repo_url(_get_settings(repo, 'to_repo_url')))
+                                        to_repo_url=utils.prepare_repo_url(_get_settings(repo, 'to_repo_url')),
+                                        hooks=_deserialize_hooks(repo.get('hooks', {})))
 
+    return result
+
+
+def _deserialize_hooks(hooks_cfg: dict) -> dict:
+    hooks_settings = {}
+    for name, hooks_list in hooks_cfg.items():
+        hooks_settings[name] = _deserialize_list_of_hooks(hooks_list)
+    return hooks_settings
+
+
+def _deserialize_list_of_hooks(hooks_list: Optional[List[Union[str, dict]]] = None) -> list:
+    if not hooks_list:
+        return []
+
+    result = []
+    for hook in hooks_list:
+        is_str = isinstance(hook, str)
+        name = hook if is_str else hook.get('name')
+
+        if name:
+            args = [] if is_str else hook.get('args', [])
+            kwargs = {} if is_str else hook.get('kwargs', {})
+            result.append(hooks.create_hook(name, *args, **kwargs))
     return result
 
 

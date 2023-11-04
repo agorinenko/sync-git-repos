@@ -5,7 +5,46 @@
       "check_base_name": false,
       "from_repo_url": "https://$GITHUB_TOKEN:x-oauth-basic@github.com/agorinenko/sync-git-repos.git",
       "to_repo_url": "https://$GITHUB_TOKEN:x-oauth-basic@github.com/agorinenko/sync-git-repos_mirror.git",
-      "delete_after_sync": true
+      "delete_after_sync": true,
+      "hooks": {
+        "before": [
+          {
+            "name": "print",
+            "args": [
+              "Starting the process of synchronizing repositories"
+            ]
+          }
+        ],
+        "before_push": [
+          {
+            "name": "print",
+            "args": [
+              "Press any key to continue:"
+            ]
+          },
+          "input"
+        ],
+        "after": [
+          {
+            "name": "print",
+            "args": [
+              "Wait 5 seconds"
+            ]
+          },
+          {
+            "name": "sleep",
+            "kwargs": {
+              "seconds": 5
+            }
+          },
+          {
+            "name": "print",
+            "args": [
+              "Thanks"
+            ]
+          }
+        ]
+      }
     }
   }
 }
